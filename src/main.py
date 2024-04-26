@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage
@@ -41,17 +42,18 @@ def get_vectorstore(text_chunks):
     vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
     return vectorstore
 
-def get_conversation_chain(vectorstore):
+def get_conversation_chain(vectorstore,model_path):
     if(st.session_state.endpoint == "HuggingFace"):
         
         llm = HuggingFaceHub(
             repo_id="mistralai/Mistral-7B-Instruct-v0.2", 
-            model_kwargs={"temperature":0.5, "max_length":512}
+            model_kwargs={"temperature":0.5, "max_length":512},
         )
     elif(st.session_state.endpoint == "Local LLM"):
         llm = LlamaCpp(
             steaming = True,
-            model_path ="/Users/zhangchenwei/Downloads/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+            # model_path ="/Users/zhangchenwei/Downloads/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+            model_path =model_path,
             temperature = 0.7,
             top_p = 1,
             verbose = True,
@@ -117,9 +119,11 @@ def main():
     st.write(css, unsafe_allow_html=True)
     st.title("RAG bot 🤖")
     if "conversation" not in st.session_state:
-        st.session_state.conversation = None
+        st.session_state.conversation = ""
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = None
+        st.session_state.chat_history = ""
+    if "model_path" not in st.session_state:
+        st.session_state.model_path = ""
     st.header("chat with PDF")
     user_question = st.chat_input("enter your question")
     if user_question:
@@ -127,11 +131,28 @@ def main():
         
     with st.sidebar :
         st.session_state.endpoint = st.selectbox("LLM endpoint", ["HuggingFace", "Local LLM"])
+        if st.session_state.endpoint == "HuggingFace":
+            api_key = st.text_input("HuggingFace API Key", type="password",value=os.getenv("HUGGINGFACEHUB_API_KEY"))
+            if api_key=="None" or api_key == "" or api_key is None:
+                st.warning("Check API KEY.")
+            else:
+                with open('.env', 'w') as f:
+                    f.write(f'HUGGINGFACEHUB_API_KEY={api_key}\n')
+                    st.success("API KEY Exist.")
+                    st.empty() 
+        elif st.session_state.endpoint == "Local LLM":
+            st.session_state.model_path = st.text_input("Path of LLM model")
+            if st.session_state.model_path == "" or st.session_state.model_path is None:
+                st.warning("Require model path.")
+            else:
+                st.empty()
+ 
+
         upload_file = st.file_uploader("upload file" , type = ["pdf", "docx", "txt"],accept_multiple_files=True)    
         chunk_size = st.number_input("chunk size", min_value = 100, max_value=2048, value=200, on_change=clear_history)
         chunk_overlap = st.number_input("chunk overlap", min_value = 1, max_value=200, value=50, on_change=clear_history)
         if st.button("upload data", on_click=clear_history):
-            with st.spinner("uploading..."):
+            with st.spinner("uploading..."):  
             # get pdf text
                 raw_text = get_pdf_text(upload_file)
 
@@ -141,7 +162,8 @@ def main():
             # create vector store
                 vectorstore = get_vectorstore(text_chunks)
             #create conversation
-                st.session_state.conversation = get_conversation_chain(vectorstore)           
+                
+                st.session_state.conversation = get_conversation_chain(vectorstore,st.session_state.model_path)           
     
 if __name__ == "__main__":
     main()
