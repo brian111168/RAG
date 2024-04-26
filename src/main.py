@@ -8,10 +8,11 @@ from langchain_community.llms import LlamaCpp
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceBgeEmbeddings
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
-from langchain.llms import HuggingFaceHub
+from langchain_community.llms import HuggingFaceHub
+from htmlTemplates import css , bot_template , user_template
 
 def get_pdf_text(upload_file):
     text = ""
@@ -41,20 +42,21 @@ def get_vectorstore(text_chunks):
     return vectorstore
 
 def get_conversation_chain(vectorstore):
-    
-    llm = HuggingFaceHub(
-        repo_id="mistralai/Mistral-7B-Instruct-v0.2", 
-        model_kwargs={"temperature":0.5, "max_length":512}
-    )
-
-    # llm = LlamaCpp(
-    #     steaming = True,
-    #     model_path ="/Users/zhangchenwei/Downloads/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
-    #     temperature = 0.7,
-    #     top_p = 1,
-    #     verbose = True,
-    #     n_ctx = 40960,
-    # )
+    if(st.session_state.endpoint == "HuggingFace"):
+        
+        llm = HuggingFaceHub(
+            repo_id="mistralai/Mistral-7B-Instruct-v0.2", 
+            model_kwargs={"temperature":0.5, "max_length":512}
+        )
+    elif(st.session_state.endpoint == "Local LLM"):
+        llm = LlamaCpp(
+            steaming = True,
+            model_path ="/Users/zhangchenwei/Downloads/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+            temperature = 0.7,
+            top_p = 1,
+            verbose = True,
+            n_ctx = 40960,
+        )
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
@@ -64,26 +66,47 @@ def get_conversation_chain(vectorstore):
     return conversation_chain
 
 def handle_userinput(user_question):
-    if user_question is not None and user_question !="":
-        st.session_state.chat_history.append(HumanMessage(user_question))
-        with st.chat_message("Human"):
-            st.markdown(user_question)
-    response = st.session_state.conversation({"question": user_question})
-    st.session_state.chat_history = response['chat_history']
-    st.write(response)
-    for message in st.session_state.chat_history:
-        if isinstance(message, HumanMessage):
-            with st.chat_message("Human"):
-                st.markdown(message.content)
-        else:        
-            with st.chat_message("AI"):
-                st.markdown(message.content)
-     
-    # for i, message in enumerate(st.session_state.chat_history):
-    #     if i % 2 == 0:
-    #         st.write("Human: " + message.content)
-    #     else:
-    #         st.write("AI: " + message.content)
+    if(st.session_state.endpoint == "HuggingFace"):
+        response = st.session_state.conversation({'question': user_question})
+        st.session_state.chat_history = response['chat_history']
+
+        for i, message in enumerate(st.session_state.chat_history):
+            if i % 2 == 0:
+                st.write(user_template.replace(
+                    "{{MSG}}", message.content), unsafe_allow_html=True)
+            else:
+                index = message.content.find("Helpful Answer:")
+                content = message.content[index + len("Helpful Answer:"):].strip()
+                st.write(bot_template.replace(
+                    "{{MSG}}", content), unsafe_allow_html=True)
+                
+    elif(st.session_state.endpoint == "Local LLM"):
+        response = st.session_state.conversation({'question': user_question})
+        st.session_state.chat_history = response['chat_history']
+        
+
+        for i, message in enumerate(st.session_state.chat_history):
+            if i % 2 == 0:
+                st.write(user_template.replace(
+                    "{{MSG}}", message.content), unsafe_allow_html=True)
+            else:
+                st.write(bot_template.replace(
+                    "{{MSG}}", message.content), unsafe_allow_html=True)
+                
+    # if user_question is not None and user_question !="":
+    #     st.session_state.chat_history.append(HumanMessage(user_question))
+    #     with st.chat_message("Human"):
+    #         st.markdown(user_question)
+    # response = st.session_state.conversation({"question": user_question})
+    # st.session_state.chat_history = response['chat_history']
+    # st.write(response)
+    # for message in st.session_state.chat_history:
+    #     if isinstance(message, HumanMessage):
+    #         with st.chat_message("Human"):
+    #             st.markdown(message.content)
+    #     else:        
+    #         with st.chat_message("AI"):
+    #             st.markdown(message.content)
 
 def clear_history():
     st.session_state.chat_history = []
@@ -91,6 +114,7 @@ def clear_history():
 def main():
     load_dotenv()
     st.set_page_config(page_title="streambot",page_icon="🤖")
+    st.write(css, unsafe_allow_html=True)
     st.title("RAG bot 🤖")
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
@@ -102,6 +126,7 @@ def main():
         handle_userinput(user_question)
         
     with st.sidebar :
+        st.session_state.endpoint = st.selectbox("LLM endpoint", ["HuggingFace", "Local LLM"])
         upload_file = st.file_uploader("upload file" , type = ["pdf", "docx", "txt"],accept_multiple_files=True)    
         chunk_size = st.number_input("chunk size", min_value = 100, max_value=2048, value=200, on_change=clear_history)
         chunk_overlap = st.number_input("chunk overlap", min_value = 1, max_value=200, value=50, on_change=clear_history)
