@@ -1,8 +1,5 @@
 # RAG
 
-## Try it HERE
-
-`https://mloggingrag.streamlit.app/`
 
 ## Introduction
 
