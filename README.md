@@ -1,5 +1,9 @@
 # RAG
 
+## Try it HERE
+
+`https://mloggingrag.streamlit.app/`
+
 ## Introduction
 
 可以上傳pdf檔案，並且和LLM進行問答，使用的語言模型是Mistral-7B-Instruct-v0.2
