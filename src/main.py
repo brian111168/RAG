@@ -124,6 +124,8 @@ def main():
         st.session_state.chat_history = ""
     if "model_path" not in st.session_state:
         st.session_state.model_path = ""
+    if "endpoint" not in st.session_state:
+        st.session_state.endpoint = "HuggingFace"
     st.header("chat with PDF")
     user_question = st.chat_input("enter your question")
     if user_question:
@@ -132,12 +134,12 @@ def main():
     with st.sidebar :
         st.session_state.endpoint = st.selectbox("LLM endpoint", ["HuggingFace", "Local LLM"])
         if st.session_state.endpoint == "HuggingFace":
-            api_key = st.text_input("HuggingFace API Key", type="password",value=os.getenv("HUGGINGFACEHUB_API_KEY"))
+            api_key = st.text_input("HuggingFace API Key", type="password",value=os.getenv("HUGGINGFACEHUB_API_TOKEN"))
             if api_key=="None" or api_key == "" or api_key is None:
                 st.warning("Check API KEY.")
             else:
                 with open('.env', 'w') as f:
-                    f.write(f'HUGGINGFACEHUB_API_KEY={api_key}\n')
+                    f.write(f'HUGGINGFACEHUB_API_TOKEN={api_key}\n')
                     st.success("API KEY Exist.")
                     st.empty() 
         elif st.session_state.endpoint == "Local LLM":
