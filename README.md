@@ -14,7 +14,8 @@ To install and run , follow these steps:
 3. `conda create -n RAG python=3.11`
 4. `conda activate RAG`
 5. 在python專案中建立一個.env檔案
-6. 安装環境:`pip install -r requirements.txt`，目前會遇到llama-cpp-python無法下載，先將requirements.txt 中的 llama_cpp_python==0.2.55刪除
+6. 開啟Vscode，選取剛剛create的環境，RAG（ctrl+shft+P）
+7. 開啟VScode終端機，安装環境:`pip install -r requirements.txt`，目前會遇到llama-cpp-python無法下載，先將requirements.txt 中的 llama_cpp_python==0.2.55刪除
 
 ## Run the Application
 
