@@ -4,6 +4,7 @@
 ## Introduction
 
 可以上傳pdf檔案，並且和LLM進行問答，使用的語言模型是Mistral-7B-Instruct-v0.2
+![RAG架構](https://github.com/brian111168/RAG/assets/75491398/30a0e25f-c43d-4f3d-aceb-4ac29523ff62)
 
 ## Installation
 
